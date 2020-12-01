@@ -3,9 +3,28 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace HartIPGateway.HartIpGateway
 {
+
+    /// <summary>
+    /// HART IP Message class
+    /// </summary>
+    public static class HARTIPMessage
+    {
+        /// <summary>
+        /// HART UDP/TCP message header size
+        /// </summary>
+        internal const int HART_MSG_HEADER_SIZE = 8;
+
+        /// <summary>
+        ///  HART UDP/TCP version
+        /// </summary>
+        internal const byte HART_UDP_TCP_MSG_VERSION = 1;
+
+    }
     public class HartClient
     {
         private readonly HartIpGatewayServer _HartTcpGateway;
@@ -56,37 +75,58 @@ namespace HartIPGateway.HartIpGateway
             IPEndPoint remoteIpEndPoint = _tcpHartClient.Client.RemoteEndPoint as IPEndPoint;
             Address = remoteIpEndPoint.Address.ToString() + ":" + remoteIpEndPoint.Port;
 
-            var isClientConnected = true;
-
-            var socket = _tcpHartClient.Client;
-            var socketHandle = socket.Handle.ToInt32();
-
-
             try
             {
                 _HartTcpGateway.AddHartClientToGateway(this);
 
+                NetworkStream networkStream = _tcpHartClient.GetStream();
+
+                var isClientConnected = true;
 
                 while (isClientConnected)
                 {
-                    NetworkStream networkStream = _tcpHartClient.GetStream();
+                    var requestMessage = ReceiveMessageFromStream(networkStream);
 
-                    byte[] hartIpRequest = new byte[_tcpHartClient.ReceiveBufferSize + 1];
+                    if (requestMessage.Count >= 8)
+                    {
 
-                    networkStream.Read(hartIpRequest, 0, System.Convert.ToInt32(_tcpHartClient.ReceiveBufferSize));
+                        var hartIpHeaderRequest = new HartMessageHeader(requestMessage.Take(8).ToArray());
 
-                    //send menssage to hart serial 
+                        switch (hartIpHeaderRequest.MessageId)
+                        {
+                            case MsgIdType.SessionInitiate:
+                                
+                                var hartIpHeaderResponse = new HartMessageHeader(hartIpHeaderRequest.Version, MsgType.Response, MsgIdType.SessionInitiate, 0, hartIpHeaderRequest.SequenceNumber, HARTIPMessage.HART_MSG_HEADER_SIZE + 5);
+                                var responseBody = new byte[5];
+                                responseBody[0] = 1;
+                                responseBody[1] = 0;
+                                responseBody[2] = 0;
+                                responseBody[3] = 0;
+                                responseBody[4] = 0;
+                                var response = new List<byte>();
+                                response.AddRange(hartIpHeaderResponse.HeaderBytes);
+                                response.AddRange(responseBody);
+                                networkStream.Write(response.ToArray(), 0, response.Count());
 
-                    //Reply message to remote client 
+                                break;
 
-                    //string responseString = "Conectado ao servidor.";
-                    //Byte[] sendBytes = Encoding.ASCII.GetBytes(responseString);
+                            default:
+                                break;
+                        }
 
-                    // networkStream.Write(sendBytes, 0, sendBytes.Length);
+                        System.Threading.Thread.Sleep(1);
+
+                        //envia resposta 
+
+
+
+                    }
+
+
 
                     isClientConnected = _tcpHartClient.Connected;
-
                 }
+
 
             }
             finally
@@ -97,52 +137,35 @@ namespace HartIPGateway.HartIpGateway
 
         }
 
-
-        private bool started = false;
-
-        /// <summary>
-        /// This method runs on its own thread, and is responsible for
-        /// receiving data from the server and raising an event when data
-        /// is received
-        /// </summary>
-        private void ListenForPackets()
+        private static List<byte> ReceiveMessageFromStream(NetworkStream networkStream)
         {
-            int bytesRead;
+            var requestMessage = new List<byte>();
+            byte[] myReadBuffer = new byte[1024];
+            int numberOfBytesRead = 0;
 
-            while (started)
+            if (networkStream.CanRead)
             {
-                bytesRead = 0;
 
-                try
+                do
                 {
-                    //Blocks until a message is received from the server
-                    bytesRead = clientStream.Read(buffer.ReadBuffer, 0, readBufferSize);
-                }
-                catch
-                {
-                    //A socket error has occurred
-                    Console.WriteLine("A socket error has occurred with the client socket " + tcpClient.ToString());
-                    break;
-                }
+                    numberOfBytesRead = networkStream.Read(myReadBuffer, 0, myReadBuffer.Length);
 
-                if (bytesRead == 0)
-                {
-                    //The server has disconnected
-                    break;
-                }
+                    if (numberOfBytesRead > 0)
+                    {
+                        var bytesRead = myReadBuffer.Take(numberOfBytesRead).ToArray();
+                        requestMessage.AddRange(bytesRead);
+                    }
 
-                if (OnDataReceived != null)
-                {
-                    //Send off the data for other classes to handle
-                    OnDataReceived(buffer.ReadBuffer, bytesRead);
-                }
+                    Thread.Sleep(10);
 
-                Thread.Sleep(15);
+                }
+                while (networkStream.DataAvailable);
+
             }
 
-            started = false;
-            Disconnect();
+            return requestMessage;
         }
+
 
     }
 

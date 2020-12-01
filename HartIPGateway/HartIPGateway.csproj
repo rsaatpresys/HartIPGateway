@@ -40,6 +40,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="HartIpGateway\ByteConverterUtil.cs" />
+    <Compile Include="HartIpGateway\HartMessageHeader.cs" />
     <Compile Include="HartIpGateway\HartIpGatewayServer.cs" />
     <Compile Include="HartIpGateway\HartClient.cs" />
     <Compile Include="Program.cs" />
