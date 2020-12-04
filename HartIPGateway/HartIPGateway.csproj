@@ -41,11 +41,20 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="HartIpGateway\ByteConverterUtil.cs" />
+    <Compile Include="HartIpGateway\HartConstants.cs" />
+    <Compile Include="HartIpGateway\HARTIPMessage.cs" />
     <Compile Include="HartIpGateway\HartMessageHeader.cs" />
     <Compile Include="HartIpGateway\HartIpGatewayServer.cs" />
     <Compile Include="HartIpGateway\HartClient.cs" />
+    <Compile Include="HartIpGateway\HartSerial.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\HartComLite\Communication.HartLite\Communication.HartLite.csproj">
+      <Project>{fababcc7-9a94-4ddd-92f2-91427b2bebb4}</Project>
+      <Name>Communication.HartLite</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

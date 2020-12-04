@@ -6,6 +6,8 @@ using System.Text;
 namespace HartIPGateway.HartIpGateway
 {
 
+
+
     public enum MsgType
     {
         Request = 0,
@@ -27,9 +29,16 @@ namespace HartIPGateway.HartIpGateway
 
     public class HartMessageHeader
     {
-        private readonly byte[] headerBytes;
+
+
+        private byte[] headerBytes;
 
         public HartMessageHeader(byte[] headerBytes)
+        {
+            ParseBytes(headerBytes);
+        }
+
+        private void ParseBytes(byte[] headerBytes)
         {
             this.headerBytes = headerBytes.Take(8).ToArray();
 
@@ -52,6 +61,7 @@ namespace HartIPGateway.HartIpGateway
             this.headerBytes[5] = ByteConverterUtil.LoByte(SequenceNumber);
             this.headerBytes[6] = ByteConverterUtil.HiByte(ByteCount);
             this.headerBytes[7] = ByteConverterUtil.LoByte(ByteCount);
+            ParseBytes(headerBytes);
 
         }
 

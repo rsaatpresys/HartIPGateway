@@ -16,13 +16,15 @@ namespace HartIPGateway.HartIpGateway
 
         private TcpListener _gatewayListener;
         private bool _isRunning;
-        private Object _lockObj = new Object();
+        private HartSerial _hartSerial;
 
         public HartIpGatewayServer(string gatewayAddress, int gatewayPort, string serialComPort)
         {
             _gatewayAddress = gatewayAddress;
             _gatewayPort = gatewayPort;
             _serialComPort = serialComPort;
+            _hartSerial = new HartSerial(_serialComPort);
+          
         }
 
         public int GatewayPort
@@ -35,8 +37,13 @@ namespace HartIPGateway.HartIpGateway
             get { return _serialComPort; }
         }
 
+        public HartSerial HartSerial { get => _hartSerial; }
+
         public void Start()
         {
+
+            _hartSerial.Open();
+            _hartSerial.ReconnectOnError = true;
 
             IPAddress ipAddressToListen;
             if (_gatewayAddress == "localhost")
@@ -71,6 +78,8 @@ namespace HartIPGateway.HartIpGateway
             {
                 client.Value.Stop();
             }
+
+            _hartSerial.Close();
 
 
         }
