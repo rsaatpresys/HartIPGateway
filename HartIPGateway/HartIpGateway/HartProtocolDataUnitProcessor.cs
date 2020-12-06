@@ -84,9 +84,47 @@ namespace HartIPGateway.HartIpGateway
             commandsImplemented = new Dictionary<int, Func<Command, byte[]>>();
             commandsImplemented.Add(0, this.Command0ReadUniqueIdentifier);
             commandsImplemented.Add(20, this.Command20ReadLongTag);
+            commandsImplemented.Add(74, this.Command74ReadIOSystemCapabilities);
+            commandsImplemented.Add(31, this.Command31InvalidCommandCheckedByHartHost);
         }
 
 
+        byte[] Command31InvalidCommandCheckedByHartHost(Command requestCommand)
+        {
+            var commandData = new byte[] {
+                    0x00
+                    };
+
+            byte responseCode = 0;
+            byte deviceStatus = 0;
+
+            var responseCommand = new Command(0, requestCommand.Address, requestCommand.CommandNumber, responseCode, deviceStatus, commandData, FrameType.FieldDeviceToMaster);
+            var responseBytes = responseCommand.ToByteArray();
+
+            return responseBytes;
+        }
+
+        byte[] Command74ReadIOSystemCapabilities(Command requestCommand)
+        {
+            var commandData = new byte[] {
+                    0x01, //Maximum Number of I/O Cards (must be greater then or equal to 1). 
+                    0x01, //Maximum Number of Channels per I/O Card (must be greater then or equal to 1). 
+                    0x01, //Maximum Number of Sub-Devices Per Channel (must be greater then or equal to 1).
+                    0x00, //Number of devices detected (the count includes the I/O system itself). 
+                    0x02, //Number of devices detected (the count includes the I/O system itself).
+                    0x02, // Maximum number of delayed responses supported by I/O System.  Must be at least two.
+                    0x01, // Master Mode for communication on channels.  0 = Secondary Master1 = Primary Master(default)
+                    0x03  // Retry Count to use when sending commands to a Sub-Device.  Valid range is 2 to 5.  3 retries is default.
+                    };
+
+            byte responseCode = 0;
+            byte deviceStatus = 0;
+
+            var responseCommand = new Command(0, requestCommand.Address, requestCommand.CommandNumber, responseCode, deviceStatus, commandData, FrameType.FieldDeviceToMaster);
+            var responseBytes = responseCommand.ToByteArray();
+
+            return responseBytes;
+        }
 
         byte[] Command20ReadLongTag(Command requestCommand)
         {
