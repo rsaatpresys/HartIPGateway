@@ -83,17 +83,22 @@ namespace HartIPGateway.HartIpGateway
         {
             commandsImplemented = new Dictionary<int, Func<Command, byte[]>>();
             commandsImplemented.Add(0, this.Command0ReadUniqueIdentifier);
+            commandsImplemented.Add(20, this.Command20ReadLongTag);
         }
 
 
 
         byte[] Command20ReadLongTag(Command requestCommand)
         {
-            var commandData = new byte[] { 0 };
+            byte[] commandData;
 
             byte responseCode = 0;
             byte deviceStatus = 0;
 
+            Encoding iso = Encoding.GetEncoding("ISO-8859-1");
+            var text = "PRESYS HART GATEWAY";
+            text = text.PadRight(32);
+            commandData = iso.GetBytes(text);
             var responseCommand = new Command(0, requestCommand.Address, requestCommand.CommandNumber, responseCode, deviceStatus, commandData, FrameType.FieldDeviceToMaster);
             var responseBytes = responseCommand.ToByteArray();
 
