@@ -41,11 +41,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="HartIpGateway\ByteConverterUtil.cs" />
+    <Compile Include="HartIpGateway\HartCommandParser.cs" />
     <Compile Include="HartIpGateway\HartConstants.cs" />
+    <Compile Include="HartIpGateway\HartDelimiter.cs" />
     <Compile Include="HartIpGateway\HARTIPMessage.cs" />
     <Compile Include="HartIpGateway\HartMessageHeader.cs" />
     <Compile Include="HartIpGateway\HartIpGatewayServer.cs" />
     <Compile Include="HartIpGateway\HartClient.cs" />
+    <Compile Include="HartIpGateway\HartProtocolDataUnitProcessor.cs" />
     <Compile Include="HartIpGateway\HartSerial.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

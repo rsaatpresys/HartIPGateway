@@ -27,6 +27,16 @@ namespace HartIPGateway.HartIpGateway
         Reserved = 256
     }
 
+    public enum HartIpStatusCodes
+    {
+        NoError = 0, 
+        TooFewBytesError = 5,
+        DeviceSpecificCommandError = 6, 
+        UnsupportedMessageId = 15,
+        AccessRestricted = 16
+
+    }
+
     public class HartMessageHeader
     {
 

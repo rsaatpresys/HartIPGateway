@@ -12,11 +12,14 @@ namespace HartIPGateway.HartIpGateway
     public class HartClient
     {
         private readonly HartIpGatewayServer _hartTcpGateway;
+        private readonly HartProtocolDataUnitProcessor _hartProtocolDataUnitProcessor;
 
         public HartClient(HartIpGatewayServer HartTcpGateway, TcpClient HartTcpClient)
         {
             _hartTcpGateway = HartTcpGateway;
             _tcpHartClient = HartTcpClient;
+            _hartProtocolDataUnitProcessor = new HartProtocolDataUnitProcessor(HartProtocolDataUnitProcessor.ProcessorModeType.HartGateWay, _hartTcpGateway.HartSerial);
+
         }
 
         public int Id { get; private set; }
@@ -69,8 +72,6 @@ namespace HartIPGateway.HartIpGateway
 
                 while (isClientConnected)
                 {
-
-
                     var requestHeaderBytes = ReceiveMessageFromStream(networkStream, HartConstants.HART_MSG_HEADER_SIZE);
 
                     if (requestHeaderBytes.Count < HartConstants.HART_MSG_HEADER_SIZE)
@@ -149,23 +150,26 @@ namespace HartIPGateway.HartIpGateway
         private void HandleTokenPassingPDU(NetworkStream networkStream, HartMessageHeader requestHeader, IList<byte> requestDataBytes)
         {
 
-            var rawResult = _hartTcpGateway.HartSerial.SendRawCommand(requestDataBytes.ToArray());
-            
+            var rawResult = _hartProtocolDataUnitProcessor.ProcessProtocolMessage(requestDataBytes.ToArray());
+
+            HartIpStatusCodes statusCode = HartIpStatusCodes.NoError;
+
             if (rawResult == null)
             {
-                return;
+                rawResult = new byte[0];
+                statusCode = HartIpStatusCodes.DeviceSpecificCommandError;
             }
 
-            byte statusCode = 0;
-
-            var hartIpHeaderResponse = new HartMessageHeader(requestHeader.Version, MsgType.Response, MsgIdType.TokenPassingPDU, statusCode, requestHeader.SequenceNumber, (ushort)(HARTIPMessage.HART_MSG_HEADER_SIZE + rawResult.Length));
+            var hartIpHeaderResponse = new HartMessageHeader(requestHeader.Version, MsgType.Response, MsgIdType.TokenPassingPDU, (byte)statusCode, requestHeader.SequenceNumber, (ushort)(HARTIPMessage.HART_MSG_HEADER_SIZE + rawResult.Length));
             var responseBody = rawResult;
             var response = new List<byte>();
             response.AddRange(hartIpHeaderResponse.HeaderBytes);
             response.AddRange(responseBody);
 
             Console.Write("Reponse HandleTokenPassingPDU:");
+
             SendResponse(networkStream, response);
+
         }
 
         private uint _inactivityCloseTimeMiliSeconds;
