@@ -161,11 +161,11 @@ namespace HartIPGateway.HartIpGateway
         {
         }
 
-        public Command(int preambleLength, IAddress address, byte commandNumber, byte responseCode, byte deviceStatus, byte[] data, FrameType frametype) :
+        public Command(int preambleLength, IAddress address, byte commandNumber, byte responseCode, byte deviceStatus, byte[] data, FrameType frametype , AddressType addressType) :
                 this(preambleLength, address, commandNumber, new byte[] { responseCode, deviceStatus }, data)
         {
 
-            var responseDelimiter = new HartDelimiter((byte)frametype);
+            var responseDelimiter = new HartDelimiter(frametype, addressType);
             this.StartDelimiter = responseDelimiter;
 
         }
@@ -379,6 +379,18 @@ namespace HartIPGateway.HartIpGateway
 
         private void ParseData(byte data)
         {
+            if (this.startDelimiter.FrameType == FrameType.MasterToFieldDevice)
+            {
+                ParseDataRequest(data);
+            }
+            else
+            {
+                ParseDataResponse(data);
+            }
+        }
+
+        private void ParseDataResponse(byte data)
+        {
             if (_currentIndex < 2)
             {
                 _currentCommand.ResponseCode[_currentIndex] = data;
@@ -390,6 +402,19 @@ namespace HartIPGateway.HartIpGateway
             _currentIndex++;
 
             if (_currentIndex == _currentCommand.Data.Length + _currentCommand.ResponseCode.Length)
+            {
+                _currentReceiveState = ReceiveState.Checksum;
+            }
+        }
+
+        private void ParseDataRequest(byte data)
+        {
+            _currentCommand.Data[_currentIndex] = data;
+           
+
+            _currentIndex++;
+
+            if (_currentIndex == _currentCommand.Data.Length)
             {
                 _currentReceiveState = ReceiveState.Checksum;
             }
@@ -410,9 +435,21 @@ namespace HartIPGateway.HartIpGateway
             }
             else
             {
-                _currentCommand.ResponseCode = new byte[2];
-                _currentCommand.Data = new byte[dataLength - 2];
+               
+
+                if (this.startDelimiter.FrameType == FrameType.MasterToFieldDevice)
+                {
+                    _currentCommand.Data = new byte[dataLength];
+                    _currentCommand.ResponseCode = new byte[0];
+                }
+                else
+                {
+                    _currentCommand.Data = new byte[dataLength - 2];
+                    _currentCommand.ResponseCode = new byte[2];
+                }
+
                 _currentReceiveState = ReceiveState.Data;
+
             }
 
             _currentIndex = 0;

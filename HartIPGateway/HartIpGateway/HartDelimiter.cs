@@ -48,7 +48,7 @@
                 return (PhysicalLayerType)value;
             }
         }
-        
+
         public FrameType FrameType
         {
             get
@@ -66,11 +66,21 @@
             }
         }
 
-       
-            public HartDelimiter(byte data)
+
+        public HartDelimiter(byte data)
         {
             this.data = data;
         }
 
+        public HartDelimiter(FrameType frametype, AddressType addressType)
+        {
+            byte byteData = (byte)frametype;
+            if (addressType == AddressType.Unique)
+            {
+                byteData = (byte)(0x80 | byteData);
+            }
+
+            this.data = byteData;
+        }
     }
 }

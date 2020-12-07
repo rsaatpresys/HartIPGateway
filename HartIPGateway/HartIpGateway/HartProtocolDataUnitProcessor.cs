@@ -54,6 +54,12 @@ namespace HartIPGateway.HartIpGateway
             else
             {
                 var requestCommand = LastReceivedCommand;
+
+                if (requestCommand.CommandNumber == 84)
+                {
+                    int i = 0;
+                }
+
                 var response = new byte[0];
 
                 if (this.commandsImplemented.ContainsKey(requestCommand.CommandNumber))
@@ -84,8 +90,11 @@ namespace HartIPGateway.HartIpGateway
             commandsImplemented = new Dictionary<int, Func<Command, byte[]>>();
             commandsImplemented.Add(0, this.Command0ReadUniqueIdentifier);
             commandsImplemented.Add(20, this.Command20ReadLongTag);
-            commandsImplemented.Add(74, this.Command74ReadIOSystemCapabilities);
             commandsImplemented.Add(31, this.Command31InvalidCommandCheckedByHartHost);
+
+            commandsImplemented.Add(74, this.Command74ReadIOSystemCapabilities);
+            commandsImplemented.Add(84, this.Command84ReadSubDeviceIdentitySummary);
+
         }
 
 
@@ -98,7 +107,7 @@ namespace HartIPGateway.HartIpGateway
             byte responseCode = 0;
             byte deviceStatus = 0;
 
-            var responseCommand = new Command(0, requestCommand.Address, requestCommand.CommandNumber, responseCode, deviceStatus, commandData, FrameType.FieldDeviceToMaster);
+            var responseCommand = new Command(0, requestCommand.Address, requestCommand.CommandNumber, responseCode, deviceStatus, commandData, FrameType.FieldDeviceToMaster, requestCommand.StartDelimiter.AddressType);
             var responseBytes = responseCommand.ToByteArray();
 
             return responseBytes;
@@ -107,8 +116,8 @@ namespace HartIPGateway.HartIpGateway
         byte[] Command74ReadIOSystemCapabilities(Command requestCommand)
         {
             var commandData = new byte[] {
-                    0x01, //Maximum Number of I/O Cards (must be greater then or equal to 1). 
-                    0x01, //Maximum Number of Channels per I/O Card (must be greater then or equal to 1). 
+                    0x02, //Maximum Number of I/O Cards (must be greater then or equal to 1). 
+                    0x02, //Maximum Number of Channels per I/O Card (must be greater then or equal to 1). 
                     0x01, //Maximum Number of Sub-Devices Per Channel (must be greater then or equal to 1).
                     0x00, //Number of devices detected (the count includes the I/O system itself). 
                     0x02, //Number of devices detected (the count includes the I/O system itself).
@@ -120,7 +129,44 @@ namespace HartIPGateway.HartIpGateway
             byte responseCode = 0;
             byte deviceStatus = 0;
 
-            var responseCommand = new Command(0, requestCommand.Address, requestCommand.CommandNumber, responseCode, deviceStatus, commandData, FrameType.FieldDeviceToMaster);
+            var responseCommand = new Command(0, requestCommand.Address, requestCommand.CommandNumber, responseCode, deviceStatus, commandData, FrameType.FieldDeviceToMaster, requestCommand.StartDelimiter.AddressType);
+            var responseBytes = responseCommand.ToByteArray();
+
+            return responseBytes;
+        }
+
+
+        byte[] Command84ReadSubDeviceIdentitySummary(Command requestCommand)
+        {
+
+            var requestData = requestCommand.Data;
+
+
+            var commandData = new byte[] {
+                   0x00, //Sub-Device Index (Index 0 returns the I/O System Identity) 
+                   0x01, //Sub-Device Index (Index 0 returns the I/O System Identity) 
+                   0x00, // I/O Card  
+                   0x00, // Channel
+                   0x00, //Manufacturer ID 
+                   0x11, //Manufacturer ID
+                   0x11, //Expanded Device Type Code 
+                   0xca, //Expanded Device Type Code 
+                   0x33, //Device ID
+                   0x00, //Device ID
+                   0x2a, //Device ID
+                   0x05, //Universal Command Revision level
+                         // long tag 
+                   0x54,0x54,0x2d,0x31,0x30,0x34,0x3a,0x20,0x54,0x4d,0x54,0x31,0x36,0x32,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,
+                   0x01, // Device Revision
+                   0x01, // Device Profile
+                   0x00, // Private Label Distributor Code
+                   0x00  // Private Label Distributor Code
+                    };
+
+            byte responseCode = 0;
+            byte deviceStatus = 0;
+
+            var responseCommand = new Command(0, requestCommand.Address, requestCommand.CommandNumber, responseCode, deviceStatus, commandData, FrameType.FieldDeviceToMaster, requestCommand.StartDelimiter.AddressType);
             var responseBytes = responseCommand.ToByteArray();
 
             return responseBytes;
@@ -133,14 +179,38 @@ namespace HartIPGateway.HartIpGateway
             byte responseCode = 0;
             byte deviceStatus = 0;
 
-            Encoding iso = Encoding.GetEncoding("ISO-8859-1");
-            var text = "PRESYS HART GATEWAY";
-            text = text.PadRight(32);
-            commandData = iso.GetBytes(text);
-            var responseCommand = new Command(0, requestCommand.Address, requestCommand.CommandNumber, responseCode, deviceStatus, commandData, FrameType.FieldDeviceToMaster);
+            var text = "PRESYS Calibrator Gateway";
+            commandData = EncodeHartText(text,32);
+            
+            var responseCommand = new Command(0, requestCommand.Address, requestCommand.CommandNumber, responseCode, deviceStatus, commandData, FrameType.FieldDeviceToMaster, requestCommand.StartDelimiter.AddressType);
             var responseBytes = responseCommand.ToByteArray();
 
             return responseBytes;
+        }
+
+        private byte[] EncodeHartText(string text, int length)
+        {
+            Encoding iso = Encoding.GetEncoding("ISO-8859-1");
+            var textBytes = iso.GetBytes(text);
+            var textFormatted = new List<byte>();
+            textFormatted.AddRange(textBytes);
+            textFormatted.Add(0);
+            for (int i = textFormatted.Count; i < length; i++)
+            {
+                textFormatted.Add(0x00);
+            }
+
+
+
+            textBytes = textFormatted.ToArray();
+
+            if (textBytes.Length > length)
+            {
+                throw new InvalidOperationException("Error encoding Hart text max length is " + length);
+            }
+
+            return textBytes;
+
         }
 
         byte[] Command0ReadUniqueIdentifier(Command requestCommand)
@@ -148,8 +218,8 @@ namespace HartIPGateway.HartIpGateway
 
             var commandData = new byte[] {
                 0xfe, //Expansion Code
-                0xf9, //Expanded Device Type
-                0x82, //Expanded Device Type
+                0xe4, //Expanded Device Type
+                0xa1, //Expanded Device Type
                 0x05, //Minimum Number of Request Preambles
                 0x07, //HART Universal Revision
                 0x01, //Device Revision
@@ -174,7 +244,7 @@ namespace HartIPGateway.HartIpGateway
             byte responseCode = 0;
             byte deviceStatus = 0;
 
-            var responseCommand = new Command(0, requestCommand.Address, requestCommand.CommandNumber, responseCode, deviceStatus, commandData, FrameType.FieldDeviceToMaster);
+            var responseCommand = new Command(0, requestCommand.Address, requestCommand.CommandNumber, responseCode, deviceStatus, commandData, FrameType.FieldDeviceToMaster, requestCommand.StartDelimiter.AddressType);
             var responseBytes = responseCommand.ToByteArray();
 
             return responseBytes;
