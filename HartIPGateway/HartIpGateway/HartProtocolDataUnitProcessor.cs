@@ -8,6 +8,27 @@ namespace HartIPGateway.HartIpGateway
     /// <summary>
     ///    Processa as mensagens do protocolo Hart e encaminha para instrumento via Serial 
     /// </summary>
+    /// <remarks>
+    /// Funções necessárias para ser implementadas pelo Gateway 
+    /// 
+    /// Command 38 Reset Configuration Changed Flag 
+    /// Command 41 Perform Self Test 
+    /// Command 42 Perform Device Reset 
+    /// Command 48 Read Additional Device Status 
+    /// Command 74 Read I/O System Capabilities 
+    /// Command 75 Poll Sub-Device 
+    /// Command 77 Send Command to Sub-Device 
+    /// Command 78 Read Aggregated Commands 
+    /// Command 83 Reset Device Variable Trim 
+    /// Command 84 Read Sub-Device Identity Summary 
+    /// Command 85 Read I/O Channel Statistics 
+    /// Command 86 Read Sub-Device Statistics 
+    /// Command 87 Write I/O System Master Mode 
+    /// Command 88 Write I/O System Retry Count 
+    /// Command 89 Set Real-Time Clock 
+    /// Command 94 Read I/O System Client-Side Communication Statistics 
+    /// 
+    /// </remarks>
     public class HartProtocolDataUnitProcessor
     {
         public ProcessorModeType ProcessorMode { get; }
@@ -88,17 +109,18 @@ namespace HartIPGateway.HartIpGateway
         private void InitializeCommandsDictionary()
         {
             commandsImplemented = new Dictionary<int, Func<Command, byte[]>>();
-            commandsImplemented.Add(0, this.Command0ReadUniqueIdentifier);
+            commandsImplemented.Add(00, this.Command0ReadUniqueIdentifier);
             commandsImplemented.Add(20, this.Command20ReadLongTag);
-            commandsImplemented.Add(31, this.Command31InvalidCommandCheckedByHartHost);
+            commandsImplemented.Add(31, this.Command31CheckIfCanQueryExtendedCommand);
 
             commandsImplemented.Add(74, this.Command74ReadIOSystemCapabilities);
+            commandsImplemented.Add(77, this.Command77SendCommandToSubDevice);
             commandsImplemented.Add(84, this.Command84ReadSubDeviceIdentitySummary);
 
         }
 
 
-        byte[] Command31InvalidCommandCheckedByHartHost(Command requestCommand)
+        byte[] Command31CheckIfCanQueryExtendedCommand(Command requestCommand)
         {
             var commandData = new byte[] {
                     0x00
@@ -125,6 +147,35 @@ namespace HartIPGateway.HartIpGateway
                     0x01, // Master Mode for communication on channels.  0 = Secondary Master1 = Primary Master(default)
                     0x03  // Retry Count to use when sending commands to a Sub-Device.  Valid range is 2 to 5.  3 retries is default.
                     };
+
+            byte responseCode = 0;
+            byte deviceStatus = 0;
+
+            var responseCommand = new Command(0, requestCommand.Address, requestCommand.CommandNumber, responseCode, deviceStatus, commandData, FrameType.FieldDeviceToMaster, requestCommand.StartDelimiter.AddressType);
+            var responseBytes = responseCommand.ToByteArray();
+
+            return responseBytes;
+        }
+
+        byte[] Command77SendCommandToSubDevice(Command requestCommand)
+        {
+
+            var requestData = requestCommand.Data;
+
+            var commandData = new byte[] {
+                            0x00, //IO Card: 0
+                            0x00, //Channel: 0
+                            0x86, //Embedded Command Delimiter: 0x86
+                            0x91,0xca,0x33,0x00,0x2a, //Unique ID
+                            0x00, // Embedded Command: 0
+                            0x0e, // Command byte count: 14
+                            0x00, // Response Code: 0
+                            0x40, // Device Status: 0x40
+                            // fe11ca0505010a080133002a
+                            0xfe,0x11,0xca,0x05,0x05,0x01,0x0a,0x08,0x01,0x33,0x00,0x2a
+            };
+
+
 
             byte responseCode = 0;
             byte deviceStatus = 0;
@@ -180,8 +231,8 @@ namespace HartIPGateway.HartIpGateway
             byte deviceStatus = 0;
 
             var text = "PRESYS Calibrator Gateway";
-            commandData = EncodeHartText(text,32);
-            
+            commandData = EncodeHartText(text, 32);
+
             var responseCommand = new Command(0, requestCommand.Address, requestCommand.CommandNumber, responseCode, deviceStatus, commandData, FrameType.FieldDeviceToMaster, requestCommand.StartDelimiter.AddressType);
             var responseBytes = responseCommand.ToByteArray();
 
