@@ -135,14 +135,19 @@ namespace HartIPGateway.HartIpGateway
             return responseBytes;
         }
 
+        private byte NumberIOCards = 2; // gateway e um único device 
+        private byte NumberChannelsPerIOCard = 2;
+        private byte MaxSubDevicesPerChannel = 1;
+        private byte NumberDevicesDetected = 2; // gateway e um único device 
+
         byte[] Command74ReadIOSystemCapabilities(Command requestCommand)
         {
             var commandData = new byte[] {
-                    0x02, //Maximum Number of I/O Cards (must be greater then or equal to 1). 
-                    0x02, //Maximum Number of Channels per I/O Card (must be greater then or equal to 1). 
-                    0x01, //Maximum Number of Sub-Devices Per Channel (must be greater then or equal to 1).
+                    NumberIOCards, //Maximum Number of I/O Cards (must be greater then or equal to 1). 
+                    NumberChannelsPerIOCard, //Maximum Number of Channels per I/O Card (must be greater then or equal to 1). 
+                    MaxSubDevicesPerChannel, //Maximum Number of Sub-Devices Per Channel (must be greater then or equal to 1).
                     0x00, //Number of devices detected (the count includes the I/O system itself). 
-                    0x02, //Number of devices detected (the count includes the I/O system itself).
+                    NumberDevicesDetected, //Number of devices detected (the count includes the I/O system itself).
                     0x02, // Maximum number of delayed responses supported by I/O System.  Must be at least two.
                     0x01, // Master Mode for communication on channels.  0 = Secondary Master1 = Primary Master(default)
                     0x03  // Retry Count to use when sending commands to a Sub-Device.  Valid range is 2 to 5.  3 retries is default.
@@ -192,35 +197,75 @@ namespace HartIPGateway.HartIpGateway
 
             var requestData = requestCommand.Data;
 
+            var subDeviceIndex = ByteConverterUtil.ToUint16(requestData[1], requestData[0]);
 
-            var commandData = new byte[] {
-                   0x00, //Sub-Device Index (Index 0 returns the I/O System Identity) 
-                   0x01, //Sub-Device Index (Index 0 returns the I/O System Identity) 
-                   0x00, // I/O Card  
-                   0x00, // Channel
-                   0x00, //Manufacturer ID 
-                   0x11, //Manufacturer ID
-                   0x11, //Expanded Device Type Code 
-                   0xca, //Expanded Device Type Code 
-                   0x33, //Device ID
-                   0x00, //Device ID
-                   0x2a, //Device ID
-                   0x05, //Universal Command Revision level
-                         // long tag 
-                   0x54,0x54,0x2d,0x31,0x30,0x34,0x3a,0x20,0x54,0x4d,0x54,0x31,0x36,0x32,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,
-                   0x01, // Device Revision
-                   0x01, // Device Profile
-                   0x00, // Private Label Distributor Code
-                   0x00  // Private Label Distributor Code
-                    };
+            var rawResult = this.HartSerial.Send(0);
+            var commandResponse = ParseSerialResponse(rawResult);
+            var responseZero = commandResponse.Data;
+
+            rawResult = this.HartSerial.Send(13);
+            commandResponse = ParseSerialResponse(rawResult);
+            var responseCommand13 = commandResponse.Data;
+
+            var temp = responseCommand13.Take(6).ToArray();
+
+            var tagTxt = UnpackAscii(temp, 6);
+
+            temp = responseCommand13.Skip(6).Take(12).ToArray();
+
+            var tagDescriptorTxt = UnpackAscii(temp, 12);
+
+            var commandDataList = new List<byte>();
+
+            commandDataList.Add(0x00); //Sub-Device Index (Index 0 returns the I/O System Identity) 
+            commandDataList.Add(0x01); //Sub-Device Index (Index 0 returns the I/O System Identity) 
+            commandDataList.Add(0x00); // I/O Card  
+            commandDataList.Add(0x00); // Channel
+            commandDataList.Add(0x00); //0x00 Manufacturer ID command 0  byte 17-18 
+            commandDataList.Add(responseZero[1]); //0x11 Manufacturer ID
+            commandDataList.Add(responseZero[1]); //0x11 Expanded Device Type Code command 0 byte 1-2 
+            commandDataList.Add(responseZero[2]); //Expanded Device Type Code 
+            commandDataList.Add(responseZero[9]); //Device ID  command 0 byte 9-11
+            commandDataList.Add(responseZero[10]);//Device ID
+            commandDataList.Add(responseZero[11]); //Device ID
+            commandDataList.Add(responseZero[4]); //Universal Command Revision level Command 0 byte-4
+                                                  // long tag Command 20 
+
+            var tempTag = tagTxt + " " + tagDescriptorTxt;
+            temp = EncodeHartText(tempTag, 30);
+            commandDataList.AddRange(temp);
+
+            commandDataList.Add(0x01); // Device Revision
+            commandDataList.Add(0x01); // Device Profile
+            commandDataList.Add(0x00); // Private Label Distributor Code
+            commandDataList.Add(0x00);  // Private Label Distributor Code
+
 
             byte responseCode = 0;
             byte deviceStatus = 0;
 
-            var responseCommand = new Command(0, requestCommand.Address, requestCommand.CommandNumber, responseCode, deviceStatus, commandData, FrameType.FieldDeviceToMaster, requestCommand.StartDelimiter.AddressType);
+            var responseCommand = new Command(0, requestCommand.Address, requestCommand.CommandNumber, responseCode, deviceStatus, commandDataList.ToArray(), FrameType.FieldDeviceToMaster, requestCommand.StartDelimiter.AddressType);
             var responseBytes = responseCommand.ToByteArray();
 
             return responseBytes;
+        }
+
+
+        private Command ParseSerialResponse(byte[] serialResponse)
+        {
+            var commandParserSerialResult = new HartCommandParser(parsePreamble: true);
+            commandParserSerialResult.CommandComplete += CommandParserSerialResult_CommandComplete;
+            commandParserSerialResult.Reset();
+            commandParserSerialResult.ParseNextBytes(serialResponse);
+            var resp = LastReceivedSerialCommand;
+            return resp;
+        }
+
+        private Command LastReceivedSerialCommand;
+
+        private void CommandParserSerialResult_CommandComplete(Command obj)
+        {
+            LastReceivedSerialCommand = obj;
         }
 
         byte[] Command20ReadLongTag(Command requestCommand)
@@ -302,7 +347,44 @@ namespace HartIPGateway.HartIpGateway
         }
 
 
+        /// <summary>
+        /// Unpack the HART packed ASCII string from the specified array
+        /// into a null terminated string. 
+        /// <note>Only translates the closes multiple of 3 of the packed length.</note>
+        /// </summary>
+        /// <param name="acResponse">byte[] array containing the packed ASCII string</param>
+        /// <param name="cPackedLength">byte number of bytes in the packed string</param>
+        /// <returns>String unpacked ASCII string</returns>
+        public static String UnpackAscii(byte[] acResponse, byte cPackedLength)
+        {
+            ushort usIdx;
+            ushort usGroupCnt;
+            ushort usMaxGroups;    // Number of 4 byte groups to pack.
+            ushort usMask;
+            ushort[] usBuf = new ushort[4];
+            String ascii = String.Empty;
+            int iIndex = 0;
 
+            usMaxGroups = (ushort)(cPackedLength / 3);
+
+            for (usGroupCnt = 0; usGroupCnt < usMaxGroups; usGroupCnt++)
+            {
+                // First unpack 3 bytes into a group of 4 bytes, clearing bits 6 & 7.
+                usBuf[0] = (ushort)(acResponse[iIndex] >> 2);
+                usBuf[1] = (ushort)(((acResponse[iIndex] << 4) & 0x30) | (acResponse[iIndex + 1] >> 4));
+                usBuf[2] = (ushort)(((acResponse[iIndex + 1] << 2) & 0x3C) | (acResponse[iIndex + 2] >> 6));
+                usBuf[3] = (ushort)(acResponse[iIndex + 2] & 0x3F);
+                iIndex += 3;
+
+                // Now transfer to unpacked area, setting bit 6 to complement of bit 5.
+                for (usIdx = 0; usIdx < 4; usIdx++)
+                {
+                    usMask = (ushort)(((usBuf[usIdx] & 0x20) << 1) ^ 0x40);
+                    ascii += (char)(usBuf[usIdx] | usMask);
+                }
+            }
+            return ascii;
+        }
 
     }
 

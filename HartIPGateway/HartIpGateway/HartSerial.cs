@@ -24,7 +24,7 @@ namespace HartIPGateway.HartIpGateway
                 AutomaticZeroCommand = false
             };
 
-            communication.Timeout = new TimeSpan(0,0,5);
+            communication.Timeout = new TimeSpan(0, 0, 5);
 
             var openResult = communication.Open();
 
@@ -32,6 +32,34 @@ namespace HartIPGateway.HartIpGateway
             {
                 throw new InvalidOperationException("Error Opening Com Port " + openResult.ToString());
             }
+
+        }
+
+        public byte[] Send(byte command)
+        {
+
+            CommandResult rawResult;
+
+            if (command == 0)
+            {
+                rawResult = communication.SendZeroCommand();
+            }
+            else
+            {
+                rawResult = communication.Send(command);
+            }
+            
+            var response = rawResult.CommandByteArray();
+            
+            return response;
+
+        }
+
+        public byte[] Send(byte command, byte[] data)
+        {
+            var rawResult = communication.Send(command, data);
+            var response = rawResult.CommandByteArray();
+            return response;
 
         }
 
