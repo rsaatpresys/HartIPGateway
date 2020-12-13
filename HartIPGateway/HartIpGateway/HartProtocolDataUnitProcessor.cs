@@ -110,6 +110,7 @@ namespace HartIPGateway.HartIpGateway
         {
             commandsImplemented = new Dictionary<int, Func<Command, byte[]>>();
             commandsImplemented.Add(00, this.Command0ReadUniqueIdentifier);
+            commandsImplemented.Add(13, this.Command13ReadTagDescriptorDate);
             commandsImplemented.Add(20, this.Command20ReadLongTag);
             commandsImplemented.Add(31, this.Command31CheckIfCanQueryExtendedCommand);
 
@@ -167,28 +168,76 @@ namespace HartIPGateway.HartIpGateway
 
             var requestData = requestCommand.Data;
 
-            var commandData = new byte[] {
-                            0x00, //IO Card: 0
-                            0x00, //Channel: 0
-                            0x86, //Embedded Command Delimiter: 0x86
-                            0x91,0xca,0x33,0x00,0x2a, //Unique ID
-                            0x00, // Embedded Command: 0
-                            0x0e, // Command byte count: 14
-                            0x00, // Response Code: 0
-                            0x40, // Device Status: 0x40
-                            // fe11ca0505010a080133002a
-                            0xfe,0x11,0xca,0x05,0x05,0x01,0x0a,0x08,0x01,0x33,0x00,0x2a
-            };
+            var ioCard = requestData[0];
+            var channel = requestData[1];
+            var preambleCount = requestData[2];
 
+            var byte0OfAddress = requestData[4];
+            var byte0OfAddressMaster = (byte)(requestData[4] | 0x80);
 
+            requestData[4] = byte0OfAddressMaster;
 
-            byte responseCode = 0;
-            byte deviceStatus = 0;
+            var requestNoPreamble = BuildRawSerialRequest(requestData);
+            
+            var responseNoPreamble = this.HartSerial.SendRawCommand(requestNoPreamble);
+
+            bool errorReceivingMessage = false;
+
+            if (responseNoPreamble == null)
+            {
+                errorReceivingMessage = true;
+            }
+            else
+            {
+                if (responseNoPreamble.Length == 0)
+                {
+                    errorReceivingMessage = true;
+                }
+            }
+
+            byte[] commandData;
+            var commandDataResponse = new List<byte>();
+
+            byte responseCode;
+            byte deviceStatus;
+
+            if (errorReceivingMessage)
+            {
+                commandData = new byte[0];
+                responseCode = 2; //Invalid Selection
+                deviceStatus = 0;
+            }
+            else
+            {
+                commandDataResponse.Add(ioCard);
+                commandDataResponse.Add(channel);
+                responseNoPreamble[1] = byte0OfAddress;
+                var respNoCheckByte = responseNoPreamble.Take(responseNoPreamble.Length - 1);
+                commandDataResponse.AddRange(respNoCheckByte);
+                commandData = commandDataResponse.ToArray();
+                responseCode = 0;
+                deviceStatus = 0;
+            }
 
             var responseCommand = new Command(0, requestCommand.Address, requestCommand.CommandNumber, responseCode, deviceStatus, commandData, FrameType.FieldDeviceToMaster, requestCommand.StartDelimiter.AddressType);
             var responseBytes = responseCommand.ToByteArray();
 
             return responseBytes;
+        }
+
+        private byte[] BuildRawSerialRequest(byte[] command77DataRequest)
+        {
+
+            var requestNoPreamble = new List<byte>();
+
+            var requestWithoutCheckByte = command77DataRequest.Skip(3).ToArray();
+
+            requestNoPreamble.AddRange(requestWithoutCheckByte);
+
+            var checkByte = Command.HartChecksum(requestWithoutCheckByte, 0);
+            requestNoPreamble.Add(checkByte);
+
+            return requestNoPreamble.ToArray();
         }
 
 
@@ -222,8 +271,9 @@ namespace HartIPGateway.HartIpGateway
             commandDataList.Add(0x00); // I/O Card  
             commandDataList.Add(0x00); // Channel
             commandDataList.Add(0x00); //0x00 Manufacturer ID command 0  byte 17-18 
-            commandDataList.Add(responseZero[1]); //0x11 Manufacturer ID
-            commandDataList.Add(responseZero[1]); //0x11 Expanded Device Type Code command 0 byte 1-2 
+            var manufacturerByte = responseZero[1];
+            commandDataList.Add(manufacturerByte); //0x11 Manufacturer ID
+            commandDataList.Add(manufacturerByte); //0x11 Expanded Device Type Code command 0 byte 1-2 
             commandDataList.Add(responseZero[2]); //Expanded Device Type Code 
             commandDataList.Add(responseZero[9]); //Device ID  command 0 byte 9-11
             commandDataList.Add(responseZero[10]);//Device ID
@@ -267,6 +317,23 @@ namespace HartIPGateway.HartIpGateway
         {
             LastReceivedSerialCommand = obj;
         }
+
+
+        byte[] Command13ReadTagDescriptorDate(Command requestCommand)
+        {
+            byte[] commandData;
+
+            byte responseCode = 0;
+            byte deviceStatus = 0;
+
+            commandData = new byte[] { 0x20, 0xd5, 0x58, 0xd0, 0x44, 0xe0, 0x35, 0x98, 0x08, 0x05, 0x25, 0x20, 0x10, 0x55, 0x89, 0x0c, 0x58, 0x00, 0x16, 0x02, 0x13 };
+
+            var responseCommand = new Command(0, requestCommand.Address, requestCommand.CommandNumber, responseCode, deviceStatus, commandData, FrameType.FieldDeviceToMaster, requestCommand.StartDelimiter.AddressType);
+            var responseBytes = responseCommand.ToByteArray();
+
+            return responseBytes;
+        }
+
 
         byte[] Command20ReadLongTag(Command requestCommand)
         {

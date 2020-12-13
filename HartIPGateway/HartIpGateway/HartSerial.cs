@@ -63,14 +63,14 @@ namespace HartIPGateway.HartIpGateway
 
         }
 
-        public byte[] SendRawCommand(byte[] hartCommand)
+        public byte[] SendRawCommand(byte[] hartFrameDatawithoutPreamble)
         {
             lock (this.lockComm)
             {
 
                 try
                 {
-                    var rawResult = communication.SendRaw(hartCommand);
+                    var rawResult = communication.SendRaw(hartFrameDatawithoutPreamble);
 
                     return rawResult;
                 }

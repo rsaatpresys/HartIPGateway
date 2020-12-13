@@ -87,7 +87,7 @@ namespace HartIPGateway.HartIpGateway
 
         private byte GetManufacturerIdentificationCode()
         {
-            return (byte)((_manufacturerIdentificationCode | 0x80) & 0xBF);
+            return _manufacturerIdentificationCode;
         }
     }
 
@@ -131,7 +131,7 @@ namespace HartIPGateway.HartIpGateway
 
         private byte GetPollingAddress()
         {
-            return (byte)((_pollingAddress | 0x80) & 0x8F);
+            return _pollingAddress;
         }
     }
 
@@ -161,7 +161,7 @@ namespace HartIPGateway.HartIpGateway
         {
         }
 
-        public Command(int preambleLength, IAddress address, byte commandNumber, byte responseCode, byte deviceStatus, byte[] data, FrameType frametype , AddressType addressType) :
+        public Command(int preambleLength, IAddress address, byte commandNumber, byte responseCode, byte deviceStatus, byte[] data, FrameType frametype, AddressType addressType) :
                 this(preambleLength, address, commandNumber, new byte[] { responseCode, deviceStatus }, data)
         {
 
@@ -261,13 +261,19 @@ namespace HartIPGateway.HartIpGateway
         internal byte CalculateChecksum()
         {
             byte[] data = BuildByteArray();
+            return HartChecksum(data, PreambleLength);
+        }
+
+        public static byte HartChecksum(byte[] data, int starIndex)
+        {
             byte checksum = 0;
-            for (int i = PreambleLength; i < data.Length - 1; ++i)
+            for (int i = starIndex; i < data.Length - 1; ++i)
             {
                 checksum ^= data[i];
             }
             return checksum;
         }
+
     }
 
     public class HartCommandParser
@@ -366,6 +372,11 @@ namespace HartIPGateway.HartIpGateway
             }
             else
             {
+                if (System.Diagnostics.Debugger.IsAttached)
+                {
+                    // erro no cálculo do checksum 
+                    System.Diagnostics.Debugger.Break();
+                }
                 _currentCommand.Data = new byte[0];
                 CommandComplete(_currentCommand);
             }
@@ -410,7 +421,7 @@ namespace HartIPGateway.HartIpGateway
         private void ParseDataRequest(byte data)
         {
             _currentCommand.Data[_currentIndex] = data;
-           
+
 
             _currentIndex++;
 
@@ -435,7 +446,7 @@ namespace HartIPGateway.HartIpGateway
             }
             else
             {
-               
+
 
                 if (this.startDelimiter.FrameType == FrameType.MasterToFieldDevice)
                 {
