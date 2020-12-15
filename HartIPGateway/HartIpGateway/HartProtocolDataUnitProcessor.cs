@@ -178,8 +178,14 @@ namespace HartIPGateway.HartIpGateway
             requestData[4] = byte0OfAddressMaster;
 
             var requestNoPreamble = BuildRawSerialRequest(requestData);
+
+            var start = DateTime.Now;
             
             var responseNoPreamble = this.HartSerial.SendRawCommand(requestNoPreamble);
+
+            var timeToRead = new TimeSpan(DateTime.Now.Ticks - start.Ticks);
+
+            Console.WriteLine("SendRawCommand(ms):" + timeToRead.TotalMilliseconds);
 
             bool errorReceivingMessage = false;
 
