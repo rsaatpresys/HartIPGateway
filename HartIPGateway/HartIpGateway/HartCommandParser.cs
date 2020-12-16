@@ -267,7 +267,7 @@ namespace HartIPGateway.HartIpGateway
         public static byte HartChecksum(byte[] data, int starIndex)
         {
             byte checksum = 0;
-            for (int i = starIndex; i < data.Length - 1; ++i)
+            for (int i = starIndex; i < data.Length; ++i)
             {
                 checksum ^= data[i];
             }

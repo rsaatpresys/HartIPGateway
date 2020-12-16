@@ -179,9 +179,11 @@ namespace HartIPGateway.HartIpGateway
 
             var requestNoPreamble = BuildRawSerialRequest(requestData);
 
+            ShowSerialMessage(requestNoPreamble, "Serial STX:");
+
             var start = DateTime.Now;
-            
-            var responseNoPreamble = this.HartSerial.SendRawCommand(requestNoPreamble);
+
+            var responseNoPreamble = this.HartSerial.SendRawCommand(requestNoPreamble, preambleCount);
 
             var timeToRead = new TimeSpan(DateTime.Now.Ticks - start.Ticks);
 
@@ -215,6 +217,9 @@ namespace HartIPGateway.HartIpGateway
             }
             else
             {
+
+                ShowSerialMessage(responseNoPreamble, "Serial Ack:");
+
                 commandDataResponse.Add(ioCard);
                 commandDataResponse.Add(channel);
                 responseNoPreamble[1] = byte0OfAddress;
@@ -229,6 +234,50 @@ namespace HartIPGateway.HartIpGateway
             var responseBytes = responseCommand.ToByteArray();
 
             return responseBytes;
+        }
+
+        private void ShowSerialMessage(byte[] hartMessage, string text)
+        {
+            Console.Write(text);
+            var byteCount = 0;
+
+            if (hartMessage.Length < 6)
+            {
+                Console.Write($"Error no Message");
+            }
+
+            for (int i = 6; i < hartMessage.Count(); i++)
+            {
+                if (i == 6)
+                {
+                    if (hartMessage[i]==54)
+                    {
+                        int brk =0;
+                    }
+
+                    Console.Write($"Command:{hartMessage[i]} ");
+                }
+                else if (i == 7)
+                {
+                    byteCount = hartMessage[i];
+
+                    if (byteCount > 0)
+                    {
+                        Console.Write(" Data:");
+                    }
+                }
+                else
+                {
+
+                    if (i <= (7 + byteCount))
+                    {
+                        Console.Write($"{hartMessage[i].ToString("X2")} ");
+                    }
+
+                }
+            }
+
+            Console.WriteLine(" ");
         }
 
         private byte[] BuildRawSerialRequest(byte[] command77DataRequest)
