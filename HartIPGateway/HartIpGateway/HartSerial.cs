@@ -48,6 +48,11 @@ namespace HartIPGateway.HartIpGateway
             {
                 rawResult = communication.Send(command);
             }
+
+            if (rawResult == null)
+            {
+                return new byte[]{};
+            }
             
             var response = rawResult.CommandByteArray();
             
@@ -63,7 +68,7 @@ namespace HartIPGateway.HartIpGateway
 
         }
 
-        public byte[] SendRawCommand(byte[] hartFrameDatawithoutPreamble, int preambleLeghtSize = 10)
+        public byte[] SendRawCommand(byte[] hartFrameDatawithoutPreamble, int preambleLeghtSize)
         {
             lock (this.lockComm)
             {

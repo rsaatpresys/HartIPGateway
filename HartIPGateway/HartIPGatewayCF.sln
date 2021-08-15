@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HartIPGatewayCF", "HartIPGatewayCF.csproj", "{096B9940-3415-4368-8D4D-142B164A2552}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HartCommunication", "..\HartCommunication\Communication.HartLite\HartCommunication.csproj", "{4993F895-0961-4969-8922-67C0B2069619}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{096B9940-3415-4368-8D4D-142B164A2552}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{096B9940-3415-4368-8D4D-142B164A2552}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{096B9940-3415-4368-8D4D-142B164A2552}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{096B9940-3415-4368-8D4D-142B164A2552}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{096B9940-3415-4368-8D4D-142B164A2552}.Release|Any CPU.Build.0 = Release|Any CPU
+		{096B9940-3415-4368-8D4D-142B164A2552}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{4993F895-0961-4969-8922-67C0B2069619}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4993F895-0961-4969-8922-67C0B2069619}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4993F895-0961-4969-8922-67C0B2069619}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4993F895-0961-4969-8922-67C0B2069619}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

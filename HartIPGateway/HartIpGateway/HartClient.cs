@@ -49,10 +49,9 @@ namespace HartIPGateway.HartIpGateway
 
             _clientThread.Join(2000);
 
-            if (_clientThread.IsAlive)
-            {
-                _clientThread.Abort();
-            }
+            //TODO: Verificar se Thread Rodando 
+            //_clientThread.Abort();
+            
 
         }
 
@@ -68,7 +67,7 @@ namespace HartIPGateway.HartIpGateway
 
                 NetworkStream networkStream = _tcpHartClient.GetStream();
 
-                var isClientConnected = true;
+                var isClientConnected = _tcpHartClient.Client.Connected;
 
                 while (isClientConnected)
                 {
@@ -77,7 +76,7 @@ namespace HartIPGateway.HartIpGateway
                     if (requestHeaderBytes.Count < HartConstants.HART_MSG_HEADER_SIZE)
                     {
 
-                        isClientConnected = _tcpHartClient.Connected;
+                        isClientConnected = _tcpHartClient.Client.Connected;
 
                         if (!isClientConnected)
                         {
@@ -104,7 +103,7 @@ namespace HartIPGateway.HartIpGateway
 
                     for (int i = 0; i < fullRequest.Count(); i++)
                     {
-                        Console.Write($"{fullRequest[i]} ");
+                        Console.Write(fullRequest[i] + " ");
                     }
 
                     Console.WriteLine(" ");
@@ -130,7 +129,7 @@ namespace HartIPGateway.HartIpGateway
 
                     Thread.Sleep(1);
 
-                    isClientConnected = _tcpHartClient.Connected;
+                    isClientConnected = _tcpHartClient.Client.Connected;
                 }
 
 
@@ -227,7 +226,7 @@ namespace HartIPGateway.HartIpGateway
         {
             for (int i = 0; i < response.Count(); i++)
             {
-                Console.Write($"{response[i]} ");
+                Console.Write(response[i] + " ");
             }
 
             Console.WriteLine(" ");
@@ -249,7 +248,7 @@ namespace HartIPGateway.HartIpGateway
                 {
                     var bytesToRead = size - receivedBytes.Count();
                     bytesToRead = Math.Min(myReadBuffer.Length, bytesToRead);
-                    networkStream.ReadTimeout = 3000000;
+                    // networkStream.ReadTimeout = 3000000;
                     numberOfBytesRead = networkStream.Read(myReadBuffer, 0, bytesToRead);
 
                     if (numberOfBytesRead > 0)

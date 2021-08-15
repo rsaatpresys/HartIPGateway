@@ -31,15 +31,15 @@ namespace HartIPGateway.HartIpGateway
     /// </remarks>
     public class HartProtocolDataUnitProcessor
     {
-        public ProcessorModeType ProcessorMode { get; }
-        public HartSerial HartSerial { get; }
-        public HartCommandParser commandParser { get; }
+        public ProcessorModeType ProcessorMode { get; private set; }
+        public HartSerial HartSerial { get; private set; }
+        public HartCommandParser commandParser { get; private set; }
 
         public HartProtocolDataUnitProcessor(ProcessorModeType processorMode, HartSerial hartSerial)
         {
             ProcessorMode = processorMode;
             HartSerial = hartSerial;
-            this.commandParser = new HartCommandParser(parsePreamble: false);
+            this.commandParser = new HartCommandParser(false);
             this.commandParser.CommandComplete += CommandParser_CommandComplete;
             InitializeCommandsDictionary();
         }
@@ -69,17 +69,14 @@ namespace HartIPGateway.HartIpGateway
 
             if (this.ProcessorMode == ProcessorModeType.SendSerialNetWork)
             {
-                var rawResult = this.HartSerial.SendRawCommand(pduMessageRequest);
+                var rawResult = this.HartSerial.SendRawCommand(pduMessageRequest,10);
                 return rawResult;
             }
             else
             {
                 var requestCommand = LastReceivedCommand;
 
-                if (requestCommand.CommandNumber == 84)
-                {
-                    int i = 0;
-                }
+              
 
                 var response = new byte[0];
 
@@ -88,11 +85,7 @@ namespace HartIPGateway.HartIpGateway
                     var commandFunction = commandsImplemented[requestCommand.CommandNumber];
                     response = commandFunction(requestCommand);
                 }
-                else
-                {
-                    int i = 0;
-                }
-
+            
                 return response;
             }
         }
@@ -243,7 +236,7 @@ namespace HartIPGateway.HartIpGateway
 
             if (hartMessage.Length < 6)
             {
-                Console.Write($"Error no Message");
+                Console.Write("Error no Message");
             }
 
             for (int i = 6; i < hartMessage.Count(); i++)
@@ -252,10 +245,10 @@ namespace HartIPGateway.HartIpGateway
                 {
                     if (hartMessage[i]==54)
                     {
-                        int brk =0;
+                        // int brk =0;
                     }
 
-                    Console.Write($"Command:{hartMessage[i]} ");
+                    Console.Write("Command:" + hartMessage[i] + " ");
                 }
                 else if (i == 7)
                 {
@@ -271,7 +264,7 @@ namespace HartIPGateway.HartIpGateway
 
                     if (i <= (7 + byteCount))
                     {
-                        Console.Write($"{hartMessage[i].ToString("X2")} ");
+                        Console.Write(hartMessage[i].ToString("X2") + " ");
                     }
 
                 }
@@ -358,7 +351,7 @@ namespace HartIPGateway.HartIpGateway
 
         private Command ParseSerialResponse(byte[] serialResponse)
         {
-            var commandParserSerialResult = new HartCommandParser(parsePreamble: true);
+            var commandParserSerialResult = new HartCommandParser(true);
             commandParserSerialResult.CommandComplete += CommandParserSerialResult_CommandComplete;
             commandParserSerialResult.Reset();
             commandParserSerialResult.ParseNextBytes(serialResponse);

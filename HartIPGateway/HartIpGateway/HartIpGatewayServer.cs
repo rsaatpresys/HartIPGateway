@@ -37,7 +37,9 @@ namespace HartIPGateway.HartIpGateway
             get { return _serialComPort; }
         }
 
-        public HartSerial HartSerial { get => _hartSerial; }
+        public HartSerial HartSerial {
+            get { return _hartSerial; }
+        }
 
         public void Start()
         {
