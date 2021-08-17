@@ -42,6 +42,7 @@ namespace HartIPGateway.HartIpGateway
             this.commandParser = new HartCommandParser(false);
             this.commandParser.CommandComplete += CommandParser_CommandComplete;
             InitializeCommandsDictionary();
+            
         }
 
         /// <summary>
@@ -82,6 +83,7 @@ namespace HartIPGateway.HartIpGateway
 
                 if (this.commandsImplemented.ContainsKey(requestCommand.CommandNumber))
                 {
+                    Console.WriteLine("Calling Command:" + requestCommand.CommandNumber);
                     var commandFunction = commandsImplemented[requestCommand.CommandNumber];
                     response = commandFunction(requestCommand);
                 }
@@ -174,12 +176,13 @@ namespace HartIPGateway.HartIpGateway
 
             ShowSerialMessage(requestNoPreamble, "Serial STX:");
 
+
             var start = DateTime.Now;
 
             var responseNoPreamble = this.HartSerial.SendRawCommand(requestNoPreamble, preambleCount);
 
             var timeToRead = new TimeSpan(DateTime.Now.Ticks - start.Ticks);
-
+ 
             Console.WriteLine("SendRawCommand(ms):" + timeToRead.TotalMilliseconds);
 
             bool errorReceivingMessage = false;
@@ -194,6 +197,11 @@ namespace HartIPGateway.HartIpGateway
                 {
                     errorReceivingMessage = true;
                 }
+            }
+
+            if (errorReceivingMessage)
+            {
+                Console.Write("Error SendRawCommand");
             }
 
             byte[] commandData;
@@ -297,6 +305,17 @@ namespace HartIPGateway.HartIpGateway
             var subDeviceIndex = ByteConverterUtil.ToUint16(requestData[1], requestData[0]);
 
             var rawResult = this.HartSerial.Send(0);
+
+            if (rawResult == null)
+            {
+                return null;
+            }
+
+            if (rawResult.Length==0)
+            {
+                return null;
+            }
+
             var commandResponse = ParseSerialResponse(rawResult);
             var responseZero = commandResponse.Data;
 
