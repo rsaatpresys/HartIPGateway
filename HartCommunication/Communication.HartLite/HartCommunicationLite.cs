@@ -146,6 +146,7 @@ namespace Communication.HartLite
             Receive += CommandReceived;
             try
             {
+              
                 SendRawCommnand(hartFrameDatawithoutPreamble, preambleLeghtSize);
                 if (!_waitForResponse.WaitOne((int)Timeout.TotalMilliseconds,false))
                 {
@@ -221,8 +222,6 @@ namespace Communication.HartLite
 
             byte[] bytesToSend = bytesToSendList.ToArray();
 
-            Thread.Sleep(100);
-
             _port.DtrEnable = false;
             _port.RtsEnable = true;
 
@@ -233,7 +232,7 @@ namespace Communication.HartLite
             Log.Debug(string.Format("Data sent to {1}: {0}", BitConverter.ToString(bytesToSend), _port.PortName));
             _port.Write(bytesToSend, 0, bytesToSend.Length);
 
-            SleepAfterSend(bytesToSend.Length, startTime);
+             SleepAfterSendSync();
             _port.RtsEnable = false;
             _port.DtrEnable = true;
         }
@@ -356,20 +355,17 @@ namespace Communication.HartLite
 
             byte[] bytesToSend = command.ToByteArray();
 
-
-            Thread.Sleep(100);
-
             _port.DtrEnable = false;
             _port.RtsEnable = true;
 
             Thread.Sleep(Convert.ToInt32(ADDITIONAL_WAIT_TIME_BEFORE_SEND));
 
             DateTime startTime = DateTime.Now;
-
             Log.Debug(string.Format("Data sent to {1}: {0}", BitConverter.ToString(bytesToSend), _port.PortName));
             _port.Write(bytesToSend, 0, bytesToSend.Length);
+                      
+            SleepAfterSendSync();
 
-            SleepAfterSend(bytesToSend.Length, startTime);
             _port.RtsEnable = false;
             _port.DtrEnable = true;
            
@@ -387,6 +383,16 @@ namespace Communication.HartLite
 
         }
 
+        private void SleepAfterSendSync()
+        {
+            while (_port.BytesToWrite > 0)
+            {
+                Thread.Sleep(1);
+            }
+
+            Thread.Sleep((int)ADDITIONAL_WAIT_TIME_AFTER_SEND);
+        }
+
         private static void SleepAfterSend(int dataLength, DateTime startTime)
         {
             TimeSpan waitTime = CalculateWaitTime(dataLength, startTime);
@@ -399,7 +405,7 @@ namespace Communication.HartLite
         {
             _port.DataReceived -= DataReceived;
             var received = new List<Byte>();
-            Thread.Sleep(100);
+            Thread.Sleep(10);
             var read = true;
             while (read)
             {

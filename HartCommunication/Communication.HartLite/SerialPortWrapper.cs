@@ -41,6 +41,8 @@ namespace Communication.HartLite
             get { return _serialPort.BytesToRead; }
         }
 
+        public int BytesToWrite { get { return _serialPort.BytesToWrite; } }
+
         public bool DtrEnable
         {
             get { return _serialPort.DtrEnable; }

@@ -11,6 +11,7 @@ namespace Communication.HartLite
         void Write(byte[] buffer, int offset, int count);
 
         int BytesToRead { get; }
+        int BytesToWrite { get; }
         string PortName { get; set; }
 
         bool DtrEnable { get; set; }
